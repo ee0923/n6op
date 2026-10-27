@@ -44,8 +44,23 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Prepare disk and dependencies
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential clang flex bison g++ gawk gcc-multilib g++-multilib \
+            gettext git libncurses-dev libssl-dev python3 python3-setuptools \
+            python3-pyelftools rsync swig unzip zlib1g-dev file wget curl \
+            ca-certificates ccache cmake ninja-build libelf-dev device-tree-compiler openssh-server \
+            subversion quilt patch xsltproc libxml-parser-perl time zstd
+          df -h
+          mkdir -p logs artifacts
+          sudo mkdir -p /run/sshd
+
       - name: Check build scripts
         run: |
+          test -x /usr/sbin/sshd
           python3 -m unittest discover -s tests
           bash -n scripts/check-device.sh
           sh -n files/etc/uci-defaults/99-custom-lan
@@ -63,19 +78,6 @@ jobs:
             python3 scripts/source-lock.py update --upstream-ref "$UPSTREAM_REF"
           fi
           python3 scripts/source-lock.py outputs >> "$GITHUB_OUTPUT"
-
-      - name: Prepare disk and dependencies
-        run: |
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            build-essential clang flex bison g++ gawk gcc-multilib g++-multilib \
-            gettext git libncurses-dev libssl-dev python3 python3-setuptools \
-            python3-pyelftools rsync swig unzip zlib1g-dev file wget curl \
-            ca-certificates ccache cmake ninja-build libelf-dev device-tree-compiler \
-            subversion quilt patch xsltproc libxml-parser-perl time zstd
-          df -h
-          mkdir -p logs artifacts
 
       - name: Checkout official ImmortalWrt
         id: upstream
@@ -141,7 +143,7 @@ jobs:
         run: |
           set -euo pipefail
           target=source/bin/targets/mediatek/filogic
-          compgen -G "$target/*netcore_n60-pro*sysupgrade.itb" > /dev/null
+          python3 scripts/check-firmware.py "$target"
           cp -a "$target"/. artifacts/
           cd artifacts
           find . -maxdepth 1 -type f ! -name SHA256SUMS -print0 | \

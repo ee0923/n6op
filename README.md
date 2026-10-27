@@ -87,7 +87,7 @@ Nikki 按[官方编译方法](https://github.com/nikkinikki-org/OpenWrt-nikki#co
 
 ## 修改软件包
 
-编辑 `configs/netcore-n60-pro.config`，添加需要的 `CONFIG_PACKAGE_<包名>=y`。工作流在更新 feeds 后运行 `make defconfig`，并检查设备、中文 LuCI、Nikki 和默认 OpenSSH 配置没有被静默移除。完整解析后的配置会随固件上传。自定义固件文件放在 `files/`，会复制到固件根目录；LAN 默认配置位于 `files/etc/uci-defaults/99-custom-lan`。
+编辑 `configs/netcore-n60-pro.config`，添加需要的 `CONFIG_PACKAGE_<包名>=y`。工作流在更新 feeds 后运行 `make defconfig`，并检查设备、中文 LuCI、Nikki 和默认 OpenSSH 配置没有被静默移除。编译结束后还会核对与 N60 Pro 镜像同名的安装包 manifest，确认 OpenSSH/SFTP、Nikki、Mihomo Meta 和中文 Argon LuCI 均已安装且不含 Dropbear，才允许上传和发布。完整解析后的配置会随固件上传。自定义固件文件放在 `files/`，会复制到固件根目录；LAN 默认配置位于 `files/etc/uci-defaults/99-custom-lan`。
 
 ## 更新锁定版本
 
@@ -110,12 +110,17 @@ git commit -m "Update pinned ImmortalWrt and feed revisions"
 
 编译启用 ccache，缓存目录为 `source/.ccache`，大小上限 2 GiB；Actions 同时缓存 `source/dl` 中的源码下载文件。ccache 恢复优先匹配相同配置和源码提交，再退回相同配置；每次成功运行保存新的缓存快照。下载缓存仍经过构建系统的来源校验。首次运行没有缓存，后续运行的加速程度取决于源码变化和缓存是否被 GitHub 淘汰。ccache 主要缓存 C/C++ 编译，不等于缓存 Mihomo 的完整 Go 构建。
 
+测试使用主机的 OpenSSH 服务端解析隔离后的 SSH 配置，并生成临时主机密钥验证认证与 SFTP 设置；不会读取主机的 SSH 配置或修改系统服务。CI 安装所需解析器并检查其存在，避免跳过验证。本地未安装 OpenSSH 服务端时该项测试会跳过；其余测试仍可运行。LAN 测试模拟 UCI 的暂存/提交和故障恢复，不能代替设备测试。
+
 ```sh
+python3 -m unittest discover -s tests -v
 bash -n scripts/check-device.sh
 sh -n files/etc/uci-defaults/99-custom-lan
 sh -n files/etc/uci-defaults/30_luci-theme-argon
 # 在已经生成 .config 的官方源码目录上验证：
 bash scripts/check-device.sh /path/to/immortalwrt
+# 完整编译后验证镜像及实际安装包清单：
+python3 scripts/check-firmware.py /path/to/immortalwrt/bin/targets/mediatek/filogic
 ```
 
 工作流使用 Ubuntu 24.04 编译，失败会自动切换单线程详细日志重试。首次全量编译可能耗时数小时；本地配置检查成功不代表云端编译通过或设备刷机验证通过。
