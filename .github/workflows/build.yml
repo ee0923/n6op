@@ -159,7 +159,7 @@ jobs:
           {
             printf '### Netcore N60 Pro 编译完成\n\n'
             printf '官方设备配置：`netcore_n60-pro`，平台：`mediatek/filogic`。\n\n'
-            printf '默认 LAN：`192.168.11.1/24`；内置 Nikki、中文 Argon 主题、Mihomo Meta 和默认 OpenSSH（22 端口）。\n\n'
+            printf '默认 LAN：`192.168.6.1/24`；内置 Nikki、中文 Argon 主题、Mihomo Meta 和默认 OpenSSH（22 端口）。\n\n'
             printf '发布步骤完成后可从 Releases 下载固件，也可从本次运行的 Artifacts 下载。\n'
             printf '首次从原厂固件安装需核对引导程序和分区布局；sysupgrade.itb 用于兼容布局的升级。\n'
           } >> "$GITHUB_STEP_SUMMARY"
@@ -224,7 +224,7 @@ jobs:
           - 平台：`mediatek/filogic`，官方设备配置：`netcore_n60-pro`。
           - 内置 Nikki、中文 LuCI、Argon 默认主题、HTTPS 和 Mihomo Meta 稳定内核。
           - 默认 SSH：OpenSSH（TCP 22），内置 SFTP，不含 Dropbear；先通过 LuCI 设置 root 密码或配置公钥。
-          - 全新安装默认 LAN：`192.168.11.1/24`，DHCP：`192.168.11.100–249`。
+          - 全新安装默认 LAN：`192.168.6.1/24`，DHCP：`192.168.6.100–249`。
           - Nikki 需自行配置订阅或配置文件并启用。
           - `*sysupgrade.itb` 用于引导与分区布局兼容的 OpenWrt/ImmortalWrt 升级。
           - 首次从原厂安装须先核对引导程序及分区布局；引导文件不是普通升级固件。

@@ -12,7 +12,7 @@
 - 内置官方 feed 的 `luci-theme-argon`，首次启动设置 Argon 为默认主题。
 - 默认内置 [Nikki](https://github.com/nikkinikki-org/OpenWrt-nikki)、LuCI 管理界面、中文语言包及 Mihomo Meta 稳定内核。
 - 默认使用 OpenSSH 服务端及客户端，内置 SFTP 服务端，不编译 Dropbear。
-- 默认 LAN 地址：`192.168.11.1/24`，DHCP 地址池：`192.168.11.100–192.168.11.249`。
+- 默认 LAN 地址：`192.168.6.1/24`，DHCP 地址池：`192.168.6.100–192.168.6.249`。
 
 对应源码：[设备定义](https://github.com/immortalwrt/immortalwrt/blob/openwrt-25.12/target/linux/mediatek/image/filogic.mk)、[设备树](https://github.com/immortalwrt/immortalwrt/blob/openwrt-25.12/target/linux/mediatek/dts/mt7986a-netcore-n60-pro.dts)。
 
@@ -46,13 +46,13 @@ Release 附件统一使用 `release-checksums.txt` 校验，包含完整压缩�
 
 LuCI 默认使用 Argon 主题。初始化配置位于 `files/etc/uci-defaults/30_luci-theme-argon`，覆盖主题包自身的初始化文件，避免其先改掉用户选择。只有主题未设置或仍为 Bootstrap/OpenWrt 2020 时才切换到 Argon；保留配置升级时，其他自定义主题及已选 Argon 都保持原样。之后可在 LuCI 的系统设置中更换主题，所选主题仍需安装在固件中。
 
-全新安装或恢复出厂后，通过 `https://192.168.11.1` 访问 LuCI。首次启动脚本兼容旧版 `192.168.1.1` 与 25.12 的地址列表 `192.168.1.1/24`，统一改为 `192.168.11.1/24`，客户端自动获取 `192.168.11.x` 地址。保留配置升级时，如果已有其他自定义 LAN 地址，脚本不会覆盖它；需要手动调整或不保留配置升级才能使用这里的默认网段。
+全新安装或恢复出厂后，通过 `https://192.168.6.1` 访问 LuCI。首次启动脚本兼容旧版 `192.168.1.1` 与 25.12 的地址列表 `192.168.1.1/24`，统一改为 `192.168.6.1/24`，客户端自动获取 `192.168.6.x` 地址。保留配置升级时，如果已有其他自定义 LAN 地址，脚本不会覆盖它；需要手动调整或不保留配置升级才能使用这里的默认网段。
 
-如果已刷入旧版本、客户端仍获取 `192.168.1.x`，可以在路由器 SSH 中执行以下命令立即修正，无需重新编译。最后一条命令会使当前连接断开，重新连接网络或更新 DHCP 租约后，通过 `192.168.11.1` 访问路由器：
+如果已刷入旧版本、客户端仍获取 `192.168.1.x`，可以在路由器 SSH 中执行以下命令立即修正，无需重新编译。最后一条命令会使当前连接断开，重新连接网络或更新 DHCP 租约后，通过 `192.168.6.1` 访问路由器：
 
 ```sh
 uci -q delete network.lan.ipaddr
-uci add_list network.lan.ipaddr='192.168.11.1/24'
+uci add_list network.lan.ipaddr='192.168.6.1/24'
 uci -q delete network.lan.netmask
 uci set dhcp.lan.start='100'
 uci set dhcp.lan.limit='150'
@@ -70,7 +70,7 @@ Nikki 按[官方编译方法](https://github.com/nikkinikki-org/OpenWrt-nikki#co
 
 全新安装默认使用 OpenSSH，监听 TCP 22，系统通过上游 `/etc/init.d/sshd` 启动服务；首次启动时由设备生成独立的 RSA 和 Ed25519 主机密钥。固件内置 `openssh-server`、`openssh-client`、`openssh-keygen` 和 `openssh-sftp-server`，取消 `dropbear`；`ssh` 和 `scp` 默认使用 OpenSSH 客户端。
 
-先在 LuCI 设置 root 密码，再通过 `ssh root@192.168.11.1` 登录。默认允许 root 公钥和密码认证，拒绝空密码；不预置密码、授权公钥或主机私钥。SFTP 服务端兼容现代 `scp` 和 SFTP 客户端。
+先在 LuCI 设置 root 密码，再通过 `ssh root@192.168.6.1` 登录。默认允许 root 公钥和密码认证，拒绝空密码；不预置密码、授权公钥或主机私钥。SFTP 服务端兼容现代 `scp` 和 SFTP 客户端。
 
 配置文件为 `files/etc/ssh/sshd_config`，可在设备的 `/etc/ssh/sshd_config.d/*.conf` 添加覆盖设置。公钥读取 `/root/.ssh/authorized_keys`，也兼容保留配置升级时已有的 `/etc/dropbear/authorized_keys`。保留配置升级时，已有的 `/etc/ssh/sshd_config` 可能继续保留，端口和认证方式以设备实际配置为准。
 
