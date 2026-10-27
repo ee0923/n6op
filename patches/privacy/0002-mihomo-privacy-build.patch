@@ -20,42 +20,6 @@
  	$(RM) -r $(PKG_BUILD_DIR)/rules/logic_test
  endef
  
---- a/nikki/files/nikki.conf
-+++ b/nikki/files/nikki.conf
-@@ -36,7 +36,7 @@
- 	option 'match_process' 'off'
- 	option 'ipv6' '1'
- 	option 'ui_path' 'ui'
--	option 'ui_url' 'https://github.com/Zephyruso/zashboard/releases/latest/download/dist-cdn-fonts.zip'
-+	option 'ui_url' 'https://github.com/Zephyruso/zashboard/releases/latest/download/dist.zip'
- 	option 'api_listen' '[::]:9090'
- 	option 'selection_cache' '1'
- 	option 'allow_lan' '1'
---- a/luci-app-nikki/htdocs/luci-static/resources/view/nikki/mixin.js
-+++ b/luci-app-nikki/htdocs/luci-static/resources/view/nikki/mixin.js
-@@ -102,7 +102,6 @@
- 
-         o = s.taboption('external_control', form.Value, 'ui_url', _('UI Url'));
-         o.placeholder = _('Unmodified');
--        o.value('https://github.com/Zephyruso/zashboard/releases/latest/download/dist-cdn-fonts.zip', 'Zashboard (CDN Fonts)');
-         o.value('https://github.com/Zephyruso/zashboard/releases/latest/download/dist.zip', 'Zashboard');
-         o.value('https://github.com/MetaCubeX/metacubexd/archive/refs/heads/gh-pages.zip', 'MetaCubeXD');
-         o.value('https://github.com/MetaCubeX/Yacd-meta/archive/refs/heads/gh-pages.zip', 'YACD');
---- a/nikki/files/ucode/mixin.uc
-+++ b/nikki/files/ucode/mixin.uc
-@@ -28,7 +28,11 @@
- 
- config['external-ui'] = uci.get('nikki', 'mixin', 'ui_path');
- config['external-ui-name'] = uci.get('nikki', 'mixin', 'ui_name');
--config['external-ui-url'] = uci.get('nikki', 'mixin', 'ui_url');
-+let ui_url = uci.get('nikki', 'mixin', 'ui_url');
-+if (ui_url == 'https://github.com/Zephyruso/zashboard/releases/latest/download/dist-cdn-fonts.zip') {
-+	ui_url = 'https://github.com/Zephyruso/zashboard/releases/latest/download/dist.zip';
-+}
-+config['external-ui-url'] = ui_url;
- config['external-controller'] = uci.get('nikki', 'mixin', 'api_listen');
- config['external-controller-tls'] = uci.get('nikki', 'mixin', 'api_tls_listen');
- config['tls'] = {};
 --- /dev/null
 +++ b/mihomo-meta/patches/9000-firmware-privacy.patch
 @@ -0,0 +1,578 @@

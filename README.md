@@ -18,7 +18,7 @@
 
 ## 隐私补丁
 
-构建会严格应用 [隐私审计与补丁](docs/privacy-audit.md)：Argon 仅使用本地背景；Nikki 默认面板使用非 CDN 字体版本，须显式点击“更新面板”下载；Mihomo 禁止核心自替换，并关闭其 Tailscale 依赖的网络日志、TUN 统计和客户端更新编译功能。保留 DNS、NTP、订阅、规则数据下载、测速及本地指标。默认遥测审计结果、必要联网和第三方面板的边界见报告，不能把源码检查当作“设备零外联”的证明。
+构建会严格应用 [隐私审计与补丁](docs/privacy-audit.md)：Argon 仅使用本地背景；Nikki 本体、LuCI 页面和默认设置保持锁定上游原样；面板自动下载由 Mihomo 隐私补丁禁用，须显式点击“更新面板”下载；Mihomo 禁止核心自替换，并关闭其 Tailscale 依赖的网络日志、TUN 统计和客户端更新编译功能。保留 DNS、NTP、订阅、规则数据下载、测速及本地指标。默认遥测审计结果、必要联网和第三方面板的边界见报告，不能把源码检查当作“设备零外联”的证明。
 
 补丁前后均核对精确文件哈希，源码更新不兼容时构建直接失败。固件附件附带 `privacy-patches.json` 和 `privacy-built.json`，用于追溯实际应用的补丁。
 
@@ -70,7 +70,7 @@ uci commit dhcp
 
 Nikki 按[官方编译方法](https://github.com/nikkinikki-org/OpenWrt-nikki#compilation)作为源码 feed 接入，更新来源保存在 `configs/feeds.conf.append`，实际构建使用 `configs/source-lock.json` 的完整 commit SHA。编译时优先使用该 feed 的 Nikki、LuCI 页面和 Mihomo Meta，并自动解析所需内核模块等依赖。`make defconfig` 后会检查 Nikki、中文语言包及 Mihomo Meta 都选为内置软件包，缺失则停止编译。
 
-安装后可选择下述 USB 分流本地配置，或在 LuCI 的 Nikki 页面配置自己的订阅/配置文件，再启用服务；保留上游默认关闭状态，不预置订阅。Nikki 更新来源为 `main` 分支，默认构建仍使用锁定提交；实际提交记录在 `build-info.txt`。
+安装后在 LuCI 的 Nikki 页面配置自己的订阅或配置文件，再启用服务；保留上游默认关闭状态，不预置订阅。Nikki 更新来源为 `main` 分支，默认构建仍使用锁定提交；实际提交记录在 `build-info.txt`。
 
 ## Android USB 共享与域名分流
 
@@ -78,25 +78,17 @@ Nikki 按[官方编译方法](https://github.com/nikkinikki-org/OpenWrt-nikki#co
 
 `mobile` 不接受手机下发的系统 DNS，也不安装系统默认路由。DHCP 获取或续租后，脚本只在独立的 IPv4 路由表 `106` 写入手机网关；拔线、租约失效或网关缺失时改为不可达路由。网线仍是普通流量的默认出口，网线断开也不会自动消耗手机流量。接口配置和防火墙初始化会保留已有的同名自定义配置。
 
-预置示例配置 `/etc/nikki/profiles/usb-mobile-auto.yaml`，也可以把同样的代理和策略组放进完整 Mihomo YAML 订阅中统一下发。当前没有设置任何域名，也不自动启用 Nikki：
+手机分流配置统一在 CF Sub Store 生成并随完整 Mihomo YAML 订阅下发；在 **服务 → Nikki → 插件配置** 中选择该订阅即可。Nikki 默认仍为关闭状态，本仓库不再预置 `/etc/nikki/profiles/usb-mobile*.yaml`、专用页面或客户端切换逻辑。
 
-1. 在 **服务 → Nikki → 插件配置** 选择本地示例 `usb-mobile-auto.yaml`，或选择包含相同策略的完整配置订阅，再启用 Nikki。保持规则模式，**混入配置**的“出站接口”保持未修改。
-2. 打开 Mihomo 面板，在 `MOBILE` 策略组中切换：`MOBILE-AUTO` 表示手机优先、断网回退网线；`MOBILE-USB` 表示仅手机。无历史选择时默认自动回退。面板尚未安装时，在 Nikki 显式点击“更新面板”下载，再打开面板；固件不会自动下载它。
-3. 域名规则的目标始终填写 `MOBILE`。规则可由订阅下发，也可在 **混入配置 → 规则配置 → 追加规则** 添加 `DOMAIN` / `DOMAIN-SUFFIX`；订阅已有的规则不必在本地重复添加。末尾保留 `MATCH,DIRECT`，未匹配的业务连接走网线。
+在 CF Sub Store 点击“添加手机分流”，后期添加指向 `MOBILE` 的域名规则。Mihomo 面板中的 `MOBILE` 组可选择 `MOBILE-AUTO`（手机优先、无网回退网线）或 `MOBILE-USB`（仅手机）。其余流量可由订阅的 `MATCH,DIRECT` 走网线。策略、探测参数和域名规则均在订阅侧维护，客户端保持规则模式；使用 Nikki 原生订阅、策略组和选择缓存能力。
 
-`MOBILE` 是原生 `select` 组，候选项为 `MOBILE-AUTO` 和 `MOBILE-USB`。`MOBILE-AUTO` 是按顺序选择 `MOBILE-USB`、`DIRECT` 的 `fallback` 组；手机原始出口 `MOBILE-USB` 为带 `routing-mark: 106` 和 `ip-version: ipv4` 的 `direct`。完整配置订阅可直接包含这些 `proxies`、`proxy-groups`、`profile` 和 `rules` 字段；只包含节点列表的订阅需要在订阅生成/转换端合并它们。USB 驱动、DHCP 接口和策略路由仍由固件提供。
+Nikki 自身的配置、LuCI 页面和混入脚本已恢复为 `configs/source-lock.json` 锁定的上游内容，包括上游默认面板 URL。独立的 Mihomo 构建隐私补丁继续保留。需要面板时通过 Nikki 显式点击“更新面板”下载；如不希望使用上游默认 CDN 字体版本，可在 Nikki 原生设置中自行选择普通 Zashboard 版本。
 
-配置启用 `profile.store-selected: true`，Nikki 默认也启用选择缓存。面板切换会记录在本地缓存中，不会改写订阅文件；重启或订阅更新后，只要策略组名及候选项名称保持一致，就会恢复上次选择。订阅负责定义可选策略，面板负责选择当前使用的策略，不再使用切换本地配置文件的专用页面。
-
-自动模式下，USB 断开、手机关闭移动数据或手机出口无法访问探测地址时，新连接改走网线；手机恢复后，新连接重新优先使用手机。自动组每 10 秒通过两个出口分别向 `https://cp.cloudflare.com/generate_204` 发出 HTTP HEAD 请求，单次超时 3 秒，要求返回 204。通常需要约 10–13 秒检测，探测地址自身不可用也可能触发回退。
-
-选择 `MOBILE-USB` 后只关闭回退，手机断网时指定连接失败；自动组仍按 `lazy: false` 在后台探测，以便随时切回自动模式。这不是停止探测的开关；如需完全停用该探测，可使用原来的 `usb-mobile.yaml` 仅手机配置，或在自己的完整订阅中移除自动组。探测仅在包含该自动组的配置被 Nikki 启用时运行，会产生少量流量，详见[隐私审计](docs/privacy-audit.md)。
-
-两种策略均不会把其他普通网线流量自动切到手机。切换针对新连接，已有 TCP 下载、通话等会话不能无缝迁移，可能需要重连。手机出口暂不提供 IPv6。
+保留配置升级时，设备已有的旧本地配置文件可能仍被保留；改选 CF Sub Store 订阅即可，本次仓库回退不会删除设备上的用户配置。切换只影响新连接，已有下载、通话等可能需要重连。手机出口暂不提供 IPv6。
 
 手机原始出口使用独立的 socket mark `106`；IPv4 策略规则优先级为 `100/101`，IPv6 拦截规则优先级为 `100`，路由表 `106` 为此功能保留。原始出口断线时仍保持不可达，以免手机的连通性探测误走网线；自动回退由上层 `MOBILE` 组选择不带此标记的 `DIRECT` 实现。Nikki 自身使用的 `80/81` 路由表和标记不变。防火墙对手机侧拒绝入站访问并启用 NAT，只放行必要的 DHCP 回包。
 
-客户端应使用路由器 DNS，以便 Nikki 关联域名和连接；自带 DoH/DoT、ECH 或直接访问 IP 的应用可能无法按域名识别。此本地配置的共享 DNS 查询仍走网线，`MOBILE` 控制的是匹配的业务连接，不包含独立的 DNS 隔离。需要继续使用自己的订阅时，可复制示例中的 `MOBILE-USB` 出口、`MOBILE-AUTO` / `MOBILE` 策略组及 `profile.store-selected` 设置，再添加对应规则。手机原始出口应保留 `routing-mark: 106` 和 `ip-version: ipv4`。
+客户端应使用路由器 DNS，以便 Nikki 关联域名和连接；自带 DoH/DoT、ECH 或直接访问 IP 的应用可能无法按域名识别。此本地配置的共享 DNS 查询仍走网线，`MOBILE` 控制的是匹配的业务连接，不包含独立的 DNS 隔离。可由 CF Sub Store 在自己的完整订阅中生成 `MOBILE-USB` 出口、`MOBILE-AUTO` / `MOBILE` 策略组和选择记忆，再添加对应规则。手机原始出口应保留 `routing-mark: 106` 和 `ip-version: ipv4`。
 
 SSH 排查接口、手机路由与策略：
 

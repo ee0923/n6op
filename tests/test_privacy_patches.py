@@ -3,6 +3,7 @@ import hashlib
 import importlib.util
 import json
 from pathlib import Path
+import re
 import subprocess
 import tempfile
 import unittest
@@ -41,6 +42,19 @@ class PrivacyPatchTests(unittest.TestCase):
 
     def save_series(self):
         (self.patch_dir / 'series.json').write_text(json.dumps(self.series))
+
+    def test_nikki_application_and_luci_are_not_customized(self):
+        series = json.loads((ROOT / 'patches/privacy/series.json').read_text())
+        for entry in series['patches']:
+            if entry['scope'] != 'nikki':
+                continue
+            declared = {item['path'] for item in entry['files']}
+            patch = (ROOT / 'patches/privacy' / entry['patch']).read_text()
+            changed = set(re.findall(r'^\+\+\+ b/(.+)$', patch, re.M))
+            self.assertEqual(declared, changed)
+            self.assertTrue(all(path.startswith('mihomo-meta/') for path in changed))
+        for directory in ['files/etc/nikki', 'files/www/luci-static/resources/view/nikki']:
+            self.assertEqual([p for p in (ROOT / directory).rglob('*') if p.is_file()], [])
 
     def test_apply_is_repeatable_and_verify_checks_result(self):
         path = self.add_patch('theme', 'network = yes\n', 'network = no\n')

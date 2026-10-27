@@ -19,7 +19,7 @@
 | --- | --- | --- |
 | 系统默认服务、default-settings、基础 LuCI | 在检查的默认配置、启动脚本和界面路径中，未找到默认启用的使用分析、崩溃上传或厂商统计上报。默认服务包含 DHCP/DNS、NTP、SSH、Web 管理等功能联网。 | 保留网络功能；不把本地日志、计数器或功能请求当作遥测。 |
 | Argon `sysauth.ut` → `luci.argon_wallpaper` RPC | 在线壁纸属于可选外联：配置启用后，路由器和浏览器会访问 Bing、vvhan、Unsplash 或 Wallhaven；保存的旧配置也能启用。不是已证实的使用统计上传。 | 删除登录页在线壁纸调用，RPC 改为固定空 URL，删除仅供壁纸使用的 wget/jsonfilter 依赖；保留内置图片、视频和字体。旧在线壁纸配置也不能触发此路径。 |
-| Nikki 配置与 LuCI 页面 | 未发现默认统计上传。订阅更新是用户配置的功能请求。默认面板 URL 指向 `dist-cdn-fonts.zip`。 | 默认改为 `dist.zip`，移除 CDN 字体版本的预设选项；混入配置时将保存的同一默认 CDN URL 规范为非 CDN 版本。自定义 URL 不替用户改写。 |
+| Nikki 配置与 LuCI 页面 | 未发现默认统计上传。订阅更新是用户配置的功能请求。默认面板 URL 指向 `dist-cdn-fonts.zip`。 | 已回退 Nikki 自身的修改：保留锁定上游的默认 CDN 面板 URL、LuCI 选项和混入逻辑，不再替用户改写。是否下载、选择哪个面板由用户使用原生设置决定；Mihomo 的自动面板下载禁用补丁仍保留。 |
 | Mihomo `updateUpdater` → `AutoDownloadUI` | 启动/配置更新时，面板目录为空可触发下载，URL 可以来自配置。 | `AutoDownloadUI` 改为空操作。首次使用面板，须在 Nikki 点击“更新面板 / Update Dashboard”；显式下载 API 保留。 |
 | Mihomo `/upgrade` → `CoreUpdater.Update` | 这是手动触发的核心替换功能，不是默认遥测，但可以用未打补丁的上游二进制覆盖隐私修改。 | 删除核心下载、解包、备份及自替换实现，保留明确的禁用错误。升级应重编译本仓库或安装同样审计过的包。 |
 | Mihomo Tailscale 适配器与其依赖 | 适配器已有 `SetNoLogsNoSupport()`；依赖的 logtail 和客户端指标为禁用/空实现，不能声称它们原来默认在上传。其余网络日志、TUN 设备统计和客户端更新有独立编译开关。 | 增加真实受支持的 `ts_omit_netlog`、`ts_omit_tundevstats`、`ts_omit_clientupdate`。原生测试检查这五项功能常量均为 false，并确认日志保护已启用。不删除 Mihomo 本地流量/连接指标，也不禁用 Tailscale 协议本身。 |
@@ -27,11 +27,11 @@
 
 ## 手机分流自动回退
 
-`usb-mobile-auto.yaml` 示例或包含相同策略的完整订阅使用原生 `select` 组 `MOBILE`，在自动回退 `MOBILE-AUTO` 与仅手机 `MOBILE-USB` 之间切换。只有 Nikki 启用包含自动组的配置时，才会通过手机和有线出口分别每 10 秒向 `https://cp.cloudflare.com/generate_204` 发送 HTTP HEAD 请求，超时为 3 秒，期待状态码 204。fallback 组据此选择首个可用出口；`lazy: false` 使无业务流量时也能发现手机恢复。
+手机策略统一由 CF Sub Store 生成并随完整订阅下发；本固件已移除两个 `usb-mobile*.yaml` 本地模板，且不修改 Nikki 本体、LuCI 页面、默认配置或混入脚本。USB 驱动、DHCP、系统标记路由和防火墙是独立的系统支持，继续保留。
 
-面板选择 `MOBILE-USB` 只改变业务连接的策略，不会停止自动组的后台探测；如需完全停用该探测，应使用不含自动组的 `usb-mobile.yaml` 或相应的完整订阅。此项差异在使用说明中明确列出。选择缓存保存在本地，用于重启或订阅更新后恢复策略选择；切换不改写订阅内容。
+CF Sub Store 的手机预设可包含原生 `select` 组 `MOBILE` 与 `fallback` 组 `MOBILE-AUTO`。启用含自动组的订阅后，客户端会按订阅设定的地址和周期发起连通性检查；预设目前为每 10 秒向 `https://cp.cloudflare.com/generate_204` 发 HTTP HEAD 请求、超时 3 秒、期待 204，且 `lazy: false`。选择仅手机并不会停止该自动组的后台探测，要停止应在订阅中移除自动组。
 
-连通性检查会产生少量流量；请求 URL 不包含设备标识、域名规则或业务内容。探测服务可观察到常规请求及出口地址，不应把它描述为“无外联”。Nikki 默认关闭，域名列表为空；本功能没有新增统计、崩溃上传或远程日志 SDK。
+这些请求由客户端按订阅执行，固件不会自行注入探测规则。Nikki 默认关闭，不预置手机分流域名；此回退没有撤销独立 Mihomo 的核心更新、自动面板下载和 Tailscale 日志/更新编译保护。第三方面板仍可能联网，上游默认 CDN 字体面板也可能加载外部字体；不再声称 Nikki 默认选择非 CDN 版本。
 
 ## 检查的调用位置
 
@@ -57,7 +57,8 @@ Actions 在 feeds 提交校验后应用补丁，再执行 `feeds update -i luci 
 
 本地验证结果：
 
-- 50 项仓库 Python 测试通过，无跳过项。
+- 51 项仓库 Python 测试通过，无跳过项；新增检查阻止固件补丁或根文件系统覆盖重新修改 Nikki 本体和 LuCI。
+- 应用当前补丁后，`nikki` 的全部 16 个文件和 `luci-app-nikki` 的全部 15 个文件与锁定上游原始快照逐文件哈希一致。剩余 Argon/Mihomo 补丁通过重复应用及精确哈希检查，已准备的 Mihomo 源码校验通过。
 - 3 项 `TestPrivacy` 原生 Go 测试通过，覆盖 updater 和 outbound。
 - 补丁后的 Mihomo 核心以相同隐私 tags、`GOOS=linux GOARCH=arm64 CGO_ENABLED=0` 独立交叉编译成功。Go 构建信息确认这些 tags 已写入目标二进制；检查确认旧核心版本查询 URL 已不在其中，禁用错误仍存在。
 - 独立验证二进制 SHA256：`aa87183a7c5d22aa3c6b349fad1a999637f04c79882168b77083dc99f32f9ee2`。该产物用于验证核心源码，未经过 OpenWrt 的完整打包及刷机流程。
@@ -69,7 +70,7 @@ go test -tags 'with_gvisor ts_omit_netlog ts_omit_tundevstats ts_omit_clientupda
   ./component/updater ./adapter/outbound -run '^TestPrivacy' -count=1
 ```
 
-手动下载的面板不是本仓库锁定的源码，其在线 IP 检测、资源、更新等行为未由本补丁保证；“非 CDN 字体”也不意味着面板没有任何外联。保留配置升级时，已缓存的旧面板不会被自动删除或替换，需要显式更新或自行审计。
+手动下载的面板不是本仓库锁定的源码，其在线 IP 检测、资源、更新等行为未由本补丁保证；选择非 CDN 字体版本也不意味着面板没有任何外联。保留配置升级时，已缓存的旧面板不会被自动删除或替换，需要显式更新或自行审计。
 
 手机自动回退配置另用隔离 Linux 容器中的实际 Mihomo 和本地 HTTP 服务验证：手机优先、手机路径无网络后切换网线、恢复后重新优先手机，以及选择仅手机策略后不回退。配置内策略切换不改写配置文件，且核心重载后恢复选择。测试使用真实 socket mark 路由失败，没有连接实体手机；外部探测地址单独确认返回 HTTP 204。
 

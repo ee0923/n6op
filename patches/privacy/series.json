@@ -34,21 +34,6 @@
           "after": "dc981ce5bc319fa8700583a6c5c03f0b07415050af99ccf01a3bac031a904bd9"
         },
         {
-          "path": "nikki/files/nikki.conf",
-          "before": "7d67418d19142423553c01f782fe2fdf1a88c1ce79a6cf6f97587c5a8ee659a9",
-          "after": "dc784df1ca32aad1592a5a38ad25dd91ff1d24a494670c88f558d5d6d7d88e13"
-        },
-        {
-          "path": "luci-app-nikki/htdocs/luci-static/resources/view/nikki/mixin.js",
-          "before": "a2b6b094f802062091c0b7d33068dc7469b258c81b7f01615c34c1ee0d1717b4",
-          "after": "424414b42161111269f0cf8209ff107dc72f151f52842120824ff772308b4ac6"
-        },
-        {
-          "path": "nikki/files/ucode/mixin.uc",
-          "before": "2656a8714e9e52ab324bf49245bc305075fe0a78e8e7b5872e203d42f43a41eb",
-          "after": "c7af99c89b0d9f06f6ecb2e2d40ca4fd1ad46cc2212ec4fb16a5c064192cb787"
-        },
-        {
           "path": "mihomo-meta/patches/9000-firmware-privacy.patch",
           "before": null,
           "after": "14fedd714f6d914cce7e0a802eaa865fe2e275efa14cc9a4d21a77ab89c0a3b5"
