@@ -66,6 +66,9 @@ jobs:
           bash -n scripts/check-device.sh
           sh -n files/etc/uci-defaults/99-custom-lan
           sh -n files/etc/uci-defaults/30_luci-theme-argon
+          sh -n files/etc/uci-defaults/90-mobile-usb
+          sh -n files/etc/udhcpc.user.d/70-mobile-usb
+          sh -n files/etc/hotplug.d/iface/70-mobile-usb
 
       - name: Resolve locked sources
         id: sources

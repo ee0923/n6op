@@ -1,0 +1,77 @@
+#!/bin/sh
+# Reserved: table 106, socket mark 106, IPv4 priorities 100/101 and IPv6 100.
+# Do not overwrite an interface or named section supplied by the user.
+for entry in network.mobile network.mobile_lookup network.mobile_reject network.mobile_reject6 firewall.mobile_usb firewall.mobile_usb_dhcp; do
+	if uci -q get "$entry" >/dev/null; then
+		[ "$(uci -q get "$entry.mobile_usb")" = 1 ] || exit 0
+	fi
+done
+
+if ! uci -q get network.mobile >/dev/null; then
+	uci import -m network <<'EOF' || exit 1
+config interface 'mobile'
+	option mobile_usb '1'
+	option device 'usb0'
+	option proto 'dhcp'
+	option defaultroute '0'
+	option peerdns '0'
+	option delegate '0'
+	option ipv6 '0'
+	option classlessroute '0'
+EOF
+fi
+if ! uci -q get network.mobile_lookup >/dev/null; then
+	uci import -m network <<'EOF' || exit 1
+config rule 'mobile_lookup'
+	option mobile_usb '1'
+	option mark '106/0xffffffff'
+	option lookup '106'
+	option priority '100'
+EOF
+fi
+if ! uci -q get network.mobile_reject >/dev/null; then
+	uci import -m network <<'EOF' || exit 1
+config rule 'mobile_reject'
+	option mobile_usb '1'
+	option mark '106/0xffffffff'
+	option action 'unreachable'
+	option priority '101'
+EOF
+fi
+if ! uci -q get network.mobile_reject6 >/dev/null; then
+	uci import -m network <<'EOF' || exit 1
+config rule6 'mobile_reject6'
+	option mobile_usb '1'
+	option mark '106/0xffffffff'
+	option action 'unreachable'
+	option priority '100'
+EOF
+fi
+if ! uci -q get firewall.mobile_usb >/dev/null; then
+	uci import -m firewall <<'EOF' || exit 1
+config zone 'mobile_usb'
+	option mobile_usb '1'
+	option name 'mobile'
+	list network 'mobile'
+	option input 'REJECT'
+	option output 'ACCEPT'
+	option forward 'REJECT'
+	option masq '1'
+	option mtu_fix '1'
+EOF
+fi
+if ! uci -q get firewall.mobile_usb_dhcp >/dev/null; then
+	uci import -m firewall <<'EOF' || exit 1
+config rule 'mobile_usb_dhcp'
+	option mobile_usb '1'
+	option name 'Allow-Mobile-DHCP'
+	option src 'mobile'
+	option proto 'udp'
+	option dest_port '68'
+	option family 'ipv4'
+	option target 'ACCEPT'
+EOF
+fi
+uci commit network || exit 1
+uci commit firewall || exit 1
+exit 0

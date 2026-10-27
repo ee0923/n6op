@@ -1,0 +1,6 @@
+#!/bin/sh
+# Physical unplug does not always produce an udhcpc deconfig event.
+[ "$INTERFACE" = mobile ] || exit 0
+[ "$ACTION" = ifdown ] || exit 0
+[ "$(uci -q get network.mobile.mobile_usb)" = 1 ] || exit 0
+ip -4 route replace unreachable default table 106

@@ -1,0 +1,19 @@
+#!/bin/sh
+# netifd sources this after applying a lease. $interface is the real device;
+# $INTERFACE is the logical UCI interface. Never install a main-table default.
+[ "$INTERFACE" = mobile ] || exit 0
+[ "$(uci -q get network.mobile.mobile_usb)" = 1 ] || exit 0
+case "$1" in
+	bound|renew)
+		# A renewal without a gateway must also remove the previous lease route.
+		ip -4 route replace unreachable default table 106 || exit 1
+		for gateway in $router; do
+			ip -4 route replace table 106 default via "$gateway" dev "$interface" onlink src "$ip" || exit 1
+			break
+		done
+		;;
+	deconfig)
+		ip -4 route replace unreachable default table 106 || exit 1
+		;;
+esac
+exit 0
