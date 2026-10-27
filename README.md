@@ -70,7 +70,33 @@ uci commit dhcp
 
 Nikki 按[官方编译方法](https://github.com/nikkinikki-org/OpenWrt-nikki#compilation)作为源码 feed 接入，更新来源保存在 `configs/feeds.conf.append`，实际构建使用 `configs/source-lock.json` 的完整 commit SHA。编译时优先使用该 feed 的 Nikki、LuCI 页面和 Mihomo Meta，并自动解析所需内核模块等依赖。`make defconfig` 后会检查 Nikki、中文语言包及 Mihomo Meta 都选为内置软件包，缺失则停止编译。
 
-安装后需在 LuCI 的 Nikki 页面配置自己的订阅或配置文件，再启用服务；保留上游默认关闭状态，不预置订阅。Nikki 更新来源为 `main` 分支，默认构建仍使用锁定提交；实际提交记录在 `build-info.txt`。
+安装后可选择下述 USB 分流本地配置，或在 LuCI 的 Nikki 页面配置自己的订阅/配置文件，再启用服务；保留上游默认关闭状态，不预置订阅。Nikki 更新来源为 `main` 分支，默认构建仍使用锁定提交；实际提交记录在 `build-info.txt`。
+
+## Android USB 共享与域名分流
+
+固件内置 RNDIS、CDC Ethernet、CDC NCM 驱动和 `ip-full`。使用可传输数据的 USB 线连接 Android 手机与路由器，打开手机的“USB 网络共享”。在 LuCI **网络 → 接口 → mobile** 查看 DHCP 获取的 IPv4 地址；默认设备为 `usb0`，如果手机显示为其他 USB 网卡，在此接口中改选实际设备即可，分流配置无需修改。手机网段不能与 LAN 或有线 WAN 重叠。
+
+`mobile` 不接受手机下发的系统 DNS，也不安装系统默认路由。DHCP 获取或续租后，脚本只在独立的 IPv4 路由表 `106` 写入手机网关；拔线、租约失效或网关缺失时改为不可达路由。网线仍是普通流量的默认出口，网线断开也不会自动消耗手机流量。接口配置和防火墙初始化会保留已有的同名自定义配置。
+
+预置本地 Nikki 配置 `/etc/nikki/profiles/usb-mobile.yaml`，无需订阅。当前没有设置任何域名，也不自动启用 Nikki：
+
+1. 在 **服务 → Nikki** 选择本地配置文件 `usb-mobile.yaml`，保持规则模式，再启用服务。不要在覆写中把“出站接口”统一锁定到有线 WAN，保持未修改。
+2. 后期在 **覆写设置 → 规则配置** 开启“追加规则”，添加 `DOMAIN`（精确域名）或 `DOMAIN-SUFFIX`（包含子域名），匹配器填写目标域名，节点填写 `MOBILE`，保存并应用。
+3. 匹配规则的 TCP/UDP 连接通过手机 IPv4 出口，其余连接由末尾的 `MATCH,DIRECT` 走网线。未添加域名时，全部连接仍走网线。
+
+`MOBILE` 使用独立的 socket mark `106`；IPv4 策略规则优先级为 `100/101`，IPv6 拦截规则优先级为 `100`，路由表 `106` 为此功能保留。手机断开时，匹配的连接失败，不回退网线；手机出口暂不提供 IPv6。Nikki 自身使用的 `80/81` 路由表和标记不变。防火墙对手机侧拒绝入站访问并启用 NAT，只放行必要的 DHCP 回包。
+
+客户端应使用路由器 DNS，以便 Nikki 关联域名和连接；自带 DoH/DoT、ECH 或直接访问 IP 的应用可能无法按域名识别。此本地配置的共享 DNS 查询仍走网线，`MOBILE` 控制的是匹配的业务连接，不包含独立的 DNS 隔离。需要继续使用自己的订阅时，可把本地配置中 `MOBILE` 出口复制到自己的配置，保留相同的 `routing-mark: 106` 和 `ip-version: ipv4`，再添加对应规则。
+
+SSH 排查接口、手机路由与策略：
+
+```sh
+ubus call network.interface.mobile status
+ip -4 route show table 106
+ip -4 rule show
+```
+
+仅有 `unreachable default` 表示尚未取得手机网关；取得租约后应出现通过手机 USB 网卡的默认路由。这些检查仅验证配置及内核路由，实际手机兼容性与运营商共享功能仍需在设备上验证。
 
 ## 默认 SSH
 
