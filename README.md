@@ -34,7 +34,7 @@
 
 ## Release 自动发布
 
-每次成功编译后，独立的 `release` job 会校验构建产物，创建 `n60-pro-<run_id>-<run_attempt>` 标签，将所有顶层产物和包含完整目录的 `immortalwrt-netcore-n60-pro.tar.gz` 上传为附件。全部附件上传成功后才公开 Release 并标记为 Latest。重跑工作流使用新的 attempt 标签，不覆盖历史固件。
+每次成功编译后，独立的 `release` job 会校验构建产物，创建 `n60-pro-<run_id>-<run_attempt>` 标签，将所有顶层产物和包含完整目录的 `immortalwrt-netcore-n60-pro.tar.gz` 上传为附件。全部附件上传成功后才公开 Release 并标记为 Latest。重跑工作流使用新的 attempt 标签，不覆盖历史 Release 固件。同一次运行重跑构建时，会覆盖该运行同名的固件和日志 Artifact；仅重跑发布任务时继续使用最近成功上传的固件 Artifact。
 
 Release 使用 Actions 自带的 `GITHUB_TOKEN`，仅发布 job 请求 `contents: write`，无需额外配置个人访问令牌。如果发布步骤因组织策略或仓库权限失败，可先从 Artifacts 下载固件；失败后可能留下未公开的草稿 Release。
 

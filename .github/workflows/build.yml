@@ -169,6 +169,7 @@ jobs:
         with:
           name: immortalwrt-netcore-n60-pro-${{ github.run_number }}
           path: artifacts/
+          overwrite: true
           if-no-files-found: error
           retention-days: 14
 
@@ -177,6 +178,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: n60-pro-build-logs-${{ github.run_number }}
+          overwrite: true
           path: |
             logs/
             source/.config
