@@ -25,6 +25,12 @@
 | Mihomo Tailscale 适配器与其依赖 | 适配器已有 `SetNoLogsNoSupport()`；依赖的 logtail 和客户端指标为禁用/空实现，不能声称它们原来默认在上传。其余网络日志、TUN 设备统计和客户端更新有独立编译开关。 | 增加真实受支持的 `ts_omit_netlog`、`ts_omit_tundevstats`、`ts_omit_clientupdate`。原生测试检查这五项功能常量均为 false，并确认日志保护已启用。不删除 Mihomo 本地流量/连接指标，也不禁用 Tailscale 协议本身。 |
 | Mihomo geodata、DNS、NTP、代理健康检查 | 内置 GeoIP/GeoSite/ASN 资源下载、配置中的 DNS/NTP、测速 URL 是功能性外联。geodata 缺失或损坏时仍可能下载；订阅还能指定 provider 和更新周期。 | 保留，避免破坏解析、时间、规则和代理。此固件并非离线固件。 |
 
+## 手机分流自动回退
+
+本仓库额外提供可选的 `usb-mobile-auto.yaml` 配置。只有 Nikki 启用且选用此配置时，才会通过手机出口和有线出口分别每 10 秒向 `https://cp.cloudflare.com/generate_204` 发送 HTTP HEAD 请求，超时为 3 秒，期待状态码 204。Mihomo 的 fallback 组据此选择首个可用出口；`lazy: false` 使无业务流量时也能发现手机恢复。
+
+这是用户启用自动切换后的连通性检查，会产生少量流量；请求 URL 不包含设备标识、域名规则或业务内容。探测服务可观察到常规请求及出口地址，不应把它描述为“无外联”。在 **Nikki → 手机分流** 关闭“断网自动切回网线”，会选择无此探测的 `usb-mobile.yaml` 配置。Nikki 默认关闭，域名列表为空；本功能没有新增统计、崩溃上传或远程日志 SDK。
+
 ## 检查的调用位置
 
 - [系统默认软件包](https://github.com/immortalwrt/immortalwrt/blob/313718c25f206cdeee399bdc6c002b7388c9a513/include/target.mk)与 `package/emortal/default-settings/files/`；N60 Pro 的官方设备定义与设备默认包。
@@ -49,7 +55,7 @@ Actions 在 feeds 提交校验后应用补丁，再执行 `feeds update -i luci 
 
 本地验证结果：
 
-- 41 项仓库测试通过，无跳过项。
+- 50 项仓库 Python 测试通过，无跳过项；Node 检查覆盖手机回退开关的两种状态和其他配置保护。
 - 3 项 `TestPrivacy` 原生 Go 测试通过，覆盖 updater 和 outbound。
 - 补丁后的 Mihomo 核心以相同隐私 tags、`GOOS=linux GOARCH=arm64 CGO_ENABLED=0` 独立交叉编译成功。Go 构建信息确认这些 tags 已写入目标二进制；检查确认旧核心版本查询 URL 已不在其中，禁用错误仍存在。
 - 独立验证二进制 SHA256：`aa87183a7c5d22aa3c6b349fad1a999637f04c79882168b77083dc99f32f9ee2`。该产物用于验证核心源码，未经过 OpenWrt 的完整打包及刷机流程。
@@ -62,5 +68,7 @@ go test -tags 'with_gvisor ts_omit_netlog ts_omit_tundevstats ts_omit_clientupda
 ```
 
 手动下载的面板不是本仓库锁定的源码，其在线 IP 检测、资源、更新等行为未由本补丁保证；“非 CDN 字体”也不意味着面板没有任何外联。保留配置升级时，已缓存的旧面板不会被自动删除或替换，需要显式更新或自行审计。
+
+手机自动回退配置另用隔离 Linux 容器中的实际 Mihomo 和本地 HTTP 服务验证：手机优先、手机路径无网络后切换网线、恢复后重新优先手机，以及关闭开关后不回退。测试使用真实 socket mark 路由失败，没有连接实体手机；外部探测地址单独确认返回 HTTP 204。
 
 本次未完成完整 OpenWrt 固件构建、刷机或设备抓包；也没有对 Wi-Fi 固件、所有内核/底层依赖和所有可选代理协议做逐行或二进制审计。构建下载和用户主动配置的外部服务仍会联网。

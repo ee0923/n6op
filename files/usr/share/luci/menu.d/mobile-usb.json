@@ -1,0 +1,11 @@
+{
+    "admin/services/nikki/mobile": {
+        "title": "手机分流",
+        "order": 35,
+        "action": { "type": "view", "path": "nikki/mobile" },
+        "depends": {
+            "acl": ["luci-app-nikki"],
+            "uci": { "nikki": true }
+        }
+    }
+}
