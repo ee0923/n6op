@@ -20,6 +20,7 @@ on:
       - 'configs/**'
       - 'scripts/**'
       - 'files/**'
+      - 'patches/**'
       - 'tests/**'
 
 permissions:
@@ -95,6 +96,8 @@ jobs:
           python3 ../scripts/source-lock.py feeds > feeds.conf
           ./scripts/feeds update -a 2>&1 | tee ../logs/feeds-update.log
           python3 ../scripts/source-lock.py verify --source-dir .
+          python3 ../scripts/privacy-patch.py apply --source-dir . --report ../artifacts/privacy-patches.json
+          ./scripts/feeds update -i luci nikki 2>&1 | tee ../logs/feeds-privacy-index.log
           ./scripts/feeds install -a 2>&1 | tee ../logs/feeds-install.log
           ./scripts/feeds install -f -p nikki nikki luci-app-nikki mihomo-meta \
             2>&1 | tee ../logs/feeds-nikki.log
@@ -143,6 +146,7 @@ jobs:
         run: |
           set -euo pipefail
           target=source/bin/targets/mediatek/filogic
+          python3 scripts/privacy-patch.py verify-built --source-dir source --report artifacts/privacy-built.json
           python3 scripts/check-firmware.py "$target"
           cp -a "$target"/. artifacts/
           cd artifacts
@@ -183,6 +187,8 @@ jobs:
             configs/source-lock.json
             configs/netcore-n60-pro.config
             artifacts/build-info.txt
+            artifacts/privacy-*.json
+            patches/privacy/series.json
           if-no-files-found: warn
           include-hidden-files: true
           retention-days: 14

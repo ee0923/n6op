@@ -16,6 +16,12 @@
 
 对应源码：[设备定义](https://github.com/immortalwrt/immortalwrt/blob/openwrt-25.12/target/linux/mediatek/image/filogic.mk)、[设备树](https://github.com/immortalwrt/immortalwrt/blob/openwrt-25.12/target/linux/mediatek/dts/mt7986a-netcore-n60-pro.dts)。
 
+## 隐私补丁
+
+构建会严格应用 [隐私审计与补丁](docs/privacy-audit.md)：Argon 仅使用本地背景；Nikki 默认面板使用非 CDN 字体版本，须显式点击“更新面板”下载；Mihomo 禁止核心自替换，并关闭其 Tailscale 依赖的网络日志、TUN 统计和客户端更新编译功能。保留 DNS、NTP、订阅、规则数据下载、测速及本地指标。默认遥测审计结果、必要联网和第三方面板的边界见报告，不能把源码检查当作“设备零外联”的证明。
+
+补丁前后均核对精确文件哈希，源码更新不兼容时构建直接失败。固件附件附带 `privacy-patches.json` 和 `privacy-built.json`，用于追溯实际应用的补丁。
+
 ## 在 GitHub 上编译
 
 1. 在自己的 GitHub 账号下创建空仓库，不勾选初始化 README。
@@ -81,6 +87,7 @@ Nikki 按[官方编译方法](https://github.com/nikkinikki-org/OpenWrt-nikki#co
 - `*preloader.bin`、`*bl31-uboot.fip`：官方构建可能生成的引导程序文件；它们不是普通升级固件。
 - `build.config`、`diffconfig`、`build-info.txt`：完整配置、配置差异及本次源码/feeds 提交记录。
 - `source-lock.json`：本次实际使用的源码与全部 feeds 锁定文件，可用于后续复用相同版本。
+- `privacy-patches.json`、`privacy-built.json`：隐私补丁的精确文件哈希及编译准备目录验证结果。
 - `SHA256SUMS`：下载解压后可运行 `sha256sum -c SHA256SUMS` 校验文件。
 
 **从原厂固件首次刷入时，先核对设备硬件版本、现有引导程序与分区布局，并备份 Factory/校准数据。不能把 sysupgrade 文件当作通用原厂升级包，也不能仅凭型号刷写引导程序。** 如果你此前使用的是第三方 `netcore_n60-pro-mod` 或扩容设备补丁，其引导与分区布局可能不同，不应强制跨布局升级。本仓库负责构建，不提供未经实机验证的首次安装命令。

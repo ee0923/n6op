@@ -1,0 +1,35 @@
+{
+  "audit_date": "2026-10-27",
+  "sources": [
+    {
+      "source": "upstream",
+      "commit": "313718c25f206cdeee399bdc6c002b7388c9a513",
+      "archive_sha256": "db354262a36fbf8d6fea49a422d7a1d910733fcfc329dd7ffdec73c267091abc",
+      "bytes": 13102776
+    },
+    {
+      "source": "packages",
+      "commit": "84bd86384928955b568988ca0e09e2c78c75173d",
+      "archive_sha256": "7bd0e07a680b159aaaa626be4a574c944be856a50a4e3b6b0512bb086c4242c2",
+      "bytes": 4711484
+    },
+    {
+      "source": "luci",
+      "commit": "d6167ea0645cbd1327708d85f94824f42d0eb872",
+      "archive_sha256": "95d09d381f1f9b2de4f16e3611c2b3ea9d3b3d7fc63c7beb6b3657cee51e5f02",
+      "bytes": 27521427
+    },
+    {
+      "source": "nikki",
+      "commit": "7b203f6c4c5e94c6c0026acb301090aa1d310e7f",
+      "archive_sha256": "2a01bd85399ef524047008b9baa70ba540aa3ae2475d6b1f046c8b643677f2d9",
+      "bytes": 106358
+    },
+    {
+      "source": "mihomo",
+      "ref": "v1.19.31",
+      "archive_sha256": "5a04aa9cf4520e06fa1c13d37b6aca49209479690722d485c40034ab17f8581f",
+      "bytes": 1263209
+    }
+  ]
+}
