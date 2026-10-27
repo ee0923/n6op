@@ -1,0 +1,15 @@
+#!/bin/sh
+
+# Override the package's initializer so it cannot replace a custom theme first.
+uci -q get luci.themes > /dev/null || uci set luci.themes='internal' || exit 1
+uci set luci.themes.Argon='/luci-static/argon' || exit 1
+
+case "$(uci -q get luci.main.mediaurlbase)" in
+	''|/luci-static/bootstrap|/luci-static/openwrt2020)
+		uci set luci.main.mediaurlbase='/luci-static/argon' || exit 1
+		;;
+esac
+
+uci commit luci || exit 1
+
+exit 0

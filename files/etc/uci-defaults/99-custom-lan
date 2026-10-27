@@ -1,0 +1,17 @@
+#!/bin/sh
+
+# Apply the default subnet without replacing an existing custom LAN address.
+case "$(uci -q get network.lan.ipaddr)" in
+	192.168.1.1|192.168.1.1/24) ;;
+	*) exit 0 ;;
+esac
+
+uci delete network.lan.ipaddr || exit 1
+uci add_list network.lan.ipaddr='192.168.11.1/24' || exit 1
+uci -q delete network.lan.netmask || true
+uci set dhcp.lan.start='100' || exit 1
+uci set dhcp.lan.limit='150' || exit 1
+uci commit network || exit 1
+uci commit dhcp || exit 1
+
+exit 0
