@@ -26,7 +26,8 @@ class SshDefaultsTests(unittest.TestCase):
             values = {}
             for line in result.stdout.splitlines():
                 key, _, value = line.partition(' ')
-                values.setdefault(key, []).append(value)
+                # OpenSSH 9.6 appends a space to Subsystem output.
+                values.setdefault(key, []).append(value.rstrip())
             expected = {
                 'port': ['22'],
                 'permitrootlogin': ['yes'],
