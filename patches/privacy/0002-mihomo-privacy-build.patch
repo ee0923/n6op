@@ -1,0 +1,639 @@
+--- a/mihomo-meta/Makefile
++++ b/mihomo-meta/Makefile
+@@ -24,7 +24,7 @@
+ GO_PKG:=github.com/metacubex/mihomo
+ GO_PKG_BUILD_PKG:=github.com/metacubex/mihomo
+ GO_PKG_LDFLAGS_X:=$(GO_PKG)/constant.Version=$(PKG_BUILD_VERSION) $(GO_PKG)/constant.BuildTime=$(PKG_BUILD_TIME)
+-GO_PKG_TAGS:=with_gvisor
++GO_PKG_TAGS:=with_gvisor ts_omit_netlog ts_omit_tundevstats ts_omit_clientupdate
+ GO_PKG_INSTALL_BIN_PATH:=/usr/libexec
+ 
+ include $(INCLUDE_DIR)/package.mk
+@@ -54,6 +54,10 @@
+ 
+ define Build/Prepare
+ 	$(Build/Prepare/Default)
++	printf '%s\n' '0b53c24d94a57ebd29d8160a46e7166242586c9e40309514fd757274831095f9  $(PKG_BUILD_DIR)/component/updater/update_core.go' | sha256sum -c -
++	printf '%s\n' '87a2e6d28445f9ab6186afe4dabac689cfb44c82069f508e5350082440b5feea  $(PKG_BUILD_DIR)/component/updater/update_ui.go' | sha256sum -c -
++	printf '%s\n' '6e6efe6c2b0a79a11e1978e0af11ba9f5c2604614d529b306a5bbdfa2f35fc6f  $(PKG_BUILD_DIR)/component/updater/privacy_test.go' | sha256sum -c -
++	printf '%s\n' '626a68d5bdc48bee8a075e863cee53a03ffca0c39a85a367ba9f281e1e9f5cc7  $(PKG_BUILD_DIR)/adapter/outbound/privacy_tailscale_test.go' | sha256sum -c -
+ 	$(RM) -r $(PKG_BUILD_DIR)/rules/logic_test
+ endef
+ 
+--- a/nikki/files/nikki.conf
++++ b/nikki/files/nikki.conf
+@@ -36,7 +36,7 @@
+ 	option 'match_process' 'off'
+ 	option 'ipv6' '1'
+ 	option 'ui_path' 'ui'
+-	option 'ui_url' 'https://github.com/Zephyruso/zashboard/releases/latest/download/dist-cdn-fonts.zip'
++	option 'ui_url' 'https://github.com/Zephyruso/zashboard/releases/latest/download/dist.zip'
+ 	option 'api_listen' '[::]:9090'
+ 	option 'selection_cache' '1'
+ 	option 'allow_lan' '1'
+--- a/luci-app-nikki/htdocs/luci-static/resources/view/nikki/mixin.js
++++ b/luci-app-nikki/htdocs/luci-static/resources/view/nikki/mixin.js
+@@ -102,7 +102,6 @@
+ 
+         o = s.taboption('external_control', form.Value, 'ui_url', _('UI Url'));
+         o.placeholder = _('Unmodified');
+-        o.value('https://github.com/Zephyruso/zashboard/releases/latest/download/dist-cdn-fonts.zip', 'Zashboard (CDN Fonts)');
+         o.value('https://github.com/Zephyruso/zashboard/releases/latest/download/dist.zip', 'Zashboard');
+         o.value('https://github.com/MetaCubeX/metacubexd/archive/refs/heads/gh-pages.zip', 'MetaCubeXD');
+         o.value('https://github.com/MetaCubeX/Yacd-meta/archive/refs/heads/gh-pages.zip', 'YACD');
+--- a/nikki/files/ucode/mixin.uc
++++ b/nikki/files/ucode/mixin.uc
+@@ -28,7 +28,11 @@
+ 
+ config['external-ui'] = uci.get('nikki', 'mixin', 'ui_path');
+ config['external-ui-name'] = uci.get('nikki', 'mixin', 'ui_name');
+-config['external-ui-url'] = uci.get('nikki', 'mixin', 'ui_url');
++let ui_url = uci.get('nikki', 'mixin', 'ui_url');
++if (ui_url == 'https://github.com/Zephyruso/zashboard/releases/latest/download/dist-cdn-fonts.zip') {
++	ui_url = 'https://github.com/Zephyruso/zashboard/releases/latest/download/dist.zip';
++}
++config['external-ui-url'] = ui_url;
+ config['external-controller'] = uci.get('nikki', 'mixin', 'api_listen');
+ config['external-controller-tls'] = uci.get('nikki', 'mixin', 'api_tls_listen');
+ config['tls'] = {};
+--- /dev/null
++++ b/mihomo-meta/patches/9000-firmware-privacy.patch
+@@ -0,0 +1,578 @@
++--- a/component/updater/update_core.go
+++++ b/component/updater/update_core.go
++@@ -1,51 +1,15 @@
++ package updater
++ 
++ import (
++-	"archive/zip"
++-	"compress/gzip"
++-	"context"
+++	"errors"
++ 	"fmt"
++-	"io"
++-	"os"
++-	"os/exec"
++-	"path/filepath"
++ 	"runtime"
++-	"strings"
++-	"sync"
++-	"time"
++ 
++-	"github.com/metacubex/mihomo/component/ca"
++-	mihomoHttp "github.com/metacubex/mihomo/component/http"
++-	C "github.com/metacubex/mihomo/constant"
++ 	"github.com/metacubex/mihomo/constant/features"
++-	"github.com/metacubex/mihomo/log"
++-
++-	"github.com/metacubex/http"
++ )
++ 
++-const (
++-	baseReleaseURL    = "https://github.com/MetaCubeX/mihomo/releases/latest/download/"
++-	versionReleaseURL = "https://github.com/MetaCubeX/mihomo/releases/latest/download/version.txt"
++-
++-	baseAlphaURL    = "https://github.com/MetaCubeX/mihomo/releases/download/Prerelease-Alpha/"
++-	versionAlphaURL = "https://github.com/MetaCubeX/mihomo/releases/download/Prerelease-Alpha/version.txt"
++-
++-	// MaxPackageFileSize is a maximum package file length in bytes. The largest
++-	// package whose size is limited by this constant currently has the size of
++-	// approximately 32 MiB.
++-	MaxPackageFileSize = 32 * 1024 * 1024
++-)
++-
++-const (
++-	ReleaseChannel = "release"
++-	AlphaChannel   = "alpha"
++-)
++-
++-// CoreUpdater is the mihomo updater.
++-// modify from https://github.com/AdguardTeam/AdGuardHome/blob/595484e0b3fb4c457f9bb727a6b94faa78a66c5f/internal/updater/updater.go
++-type CoreUpdater struct {
++-	mu sync.Mutex
++-}
+++// Firmware upgrades must retain the audited source and patch set.
+++type CoreUpdater struct{}
++ 
++ var DefaultCoreUpdater = CoreUpdater{}
++ 
++@@ -80,398 +44,6 @@
++ 	}
++ }
++ 
++-func (u *CoreUpdater) Update(currentExePath string, channel string, force bool) (err error) {
++-	u.mu.Lock()
++-	defer u.mu.Unlock()
++-
++-	info, err := os.Stat(currentExePath)
++-	if err != nil {
++-		return fmt.Errorf("check currentExePath %q: %w", currentExePath, err)
++-	}
++-
++-	baseURL := baseAlphaURL
++-	versionURL := versionAlphaURL
++-	switch strings.ToLower(channel) {
++-	case ReleaseChannel:
++-		baseURL = baseReleaseURL
++-		versionURL = versionReleaseURL
++-	case AlphaChannel:
++-		break
++-	default: // auto
++-		if !strings.HasPrefix(C.Version, "alpha") {
++-			baseURL = baseReleaseURL
++-			versionURL = versionReleaseURL
++-		}
++-	}
++-
++-	latestVersion, err := u.getLatestVersion(versionURL)
++-	if err != nil {
++-		return fmt.Errorf("get latest version: %w", err)
++-	}
++-	log.Infoln("current version %s, latest version %s", C.Version, latestVersion)
++-
++-	if latestVersion == C.Version && !force {
++-		// don't change this output, some downstream dependencies on the upgrader's output fields
++-		return fmt.Errorf("update error: already using latest version %s", C.Version)
++-	}
++-
++-	defer func() {
++-		if err != nil {
++-			log.Errorln("updater: failed: %v", err)
++-		} else {
++-			log.Infoln("updater: finished")
++-		}
++-	}()
++-
++-	// ---- prepare ----
++-	mihomoBaseName := u.CoreBaseName()
++-	packageName := mihomoBaseName + "-" + latestVersion
++-	if runtime.GOOS == "windows" {
++-		packageName = packageName + ".zip"
++-	} else {
++-		packageName = packageName + ".gz"
++-	}
++-	packageURL := baseURL + packageName
++-	log.Infoln("updater: updating using url: %s", packageURL)
++-
++-	workDir := filepath.Dir(currentExePath)
++-	backupDir := filepath.Join(workDir, "meta-backup")
++-	updateDir := filepath.Join(workDir, "meta-update")
++-	packagePath := filepath.Join(updateDir, packageName)
++-	//log.Infoln(packagePath)
++-
++-	updateExeName := mihomoBaseName
++-	if runtime.GOOS == "windows" {
++-		updateExeName = updateExeName + ".exe"
++-	}
++-	log.Infoln("updateExeName: %s", updateExeName)
++-	updateExePath := filepath.Join(updateDir, updateExeName)
++-	backupExePath := filepath.Join(backupDir, filepath.Base(currentExePath))
++-
++-	defer u.clean(updateDir)
++-
++-	err = u.download(updateDir, packagePath, packageURL)
++-	if err != nil {
++-		return fmt.Errorf("downloading: %w", err)
++-	}
++-
++-	err = u.unpack(updateDir, packagePath, info.Mode())
++-	if err != nil {
++-		return fmt.Errorf("unpacking: %w", err)
++-	}
++-
++-	err = u.backup(currentExePath, backupExePath, backupDir)
++-	if err != nil {
++-		return fmt.Errorf("backuping: %w", err)
++-	}
++-
++-	err = u.copyFile(updateExePath, currentExePath)
++-	if err != nil {
++-		return fmt.Errorf("replacing: %w", err)
++-	}
++-
++-	return nil
+++func (u *CoreUpdater) Update(currentExePath string, channel string, force bool) error {
+++	return errors.New("core self-update is disabled in this firmware; rebuild the audited package instead")
++ }
++-
++-func (u *CoreUpdater) getLatestVersion(versionURL string) (version string, err error) {
++-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
++-	defer cancel()
++-	resp, err := mihomoHttp.HttpRequest(ctx, versionURL, http.MethodGet, nil, nil, mihomoHttp.WithCAOption(ca.Option{ZeroTrust: true}))
++-	if err != nil {
++-		return "", err
++-	}
++-	defer func() {
++-		closeErr := resp.Body.Close()
++-		if closeErr != nil && err == nil {
++-			err = closeErr
++-		}
++-	}()
++-
++-	body, err := io.ReadAll(resp.Body)
++-	if err != nil {
++-		return "", err
++-	}
++-	content := strings.TrimRight(string(body), "\n")
++-	return content, nil
++-}
++-
++-// download package file and save it to disk
++-func (u *CoreUpdater) download(updateDir, packagePath, packageURL string) (err error) {
++-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*90)
++-	defer cancel()
++-	resp, err := mihomoHttp.HttpRequest(ctx, packageURL, http.MethodGet, nil, nil, mihomoHttp.WithCAOption(ca.Option{ZeroTrust: true}))
++-	if err != nil {
++-		return fmt.Errorf("http request failed: %w", err)
++-	}
++-
++-	defer func() {
++-		closeErr := resp.Body.Close()
++-		if closeErr != nil && err == nil {
++-			err = closeErr
++-		}
++-	}()
++-
++-	log.Debugln("updateDir %s", updateDir)
++-	err = os.Mkdir(updateDir, 0o755)
++-	if err != nil {
++-		return fmt.Errorf("mkdir error: %w", err)
++-	}
++-
++-	log.Debugln("updater: saving package to file %s", packagePath)
++-	// Create the output file
++-	wc, err := os.OpenFile(packagePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o755)
++-	if err != nil {
++-		return fmt.Errorf("os.OpenFile(%s): %w", packagePath, err)
++-	}
++-
++-	defer func() {
++-		closeErr := wc.Close()
++-		if closeErr != nil && err == nil {
++-			err = closeErr
++-		}
++-	}()
++-
++-	log.Debugln("updater: reading http body")
++-	// This use of io.Copy is now safe, because we limited body's Reader.
++-	n, err := io.Copy(wc, io.LimitReader(resp.Body, MaxPackageFileSize))
++-	if err != nil {
++-		return fmt.Errorf("io.Copy(): %w", err)
++-	}
++-	if n == MaxPackageFileSize {
++-		// Use whether n is equal to MaxPackageFileSize to determine whether the limit has been reached.
++-		// It is also possible that the size of the downloaded file is exactly the same as the maximum limit,
++-		// but we should not consider this too rare situation.
++-		return fmt.Errorf("attempted to read more than %d bytes", MaxPackageFileSize)
++-	}
++-	log.Debugln("updater: downloaded package to file %s", packagePath)
++-
++-	return nil
++-}
++-
++-// unpack extracts the files from the downloaded archive.
++-func (u *CoreUpdater) unpack(updateDir, packagePath string, fileMode os.FileMode) error {
++-	log.Infoln("updater: unpacking package")
++-	if strings.HasSuffix(packagePath, ".zip") {
++-		_, err := u.zipFileUnpack(packagePath, updateDir, fileMode)
++-		if err != nil {
++-			return fmt.Errorf(".zip unpack failed: %w", err)
++-		}
++-
++-	} else if strings.HasSuffix(packagePath, ".gz") {
++-		_, err := u.gzFileUnpack(packagePath, updateDir, fileMode)
++-		if err != nil {
++-			return fmt.Errorf(".gz unpack failed: %w", err)
++-		}
++-
++-	} else {
++-		return fmt.Errorf("unknown package extension")
++-	}
++-
++-	return nil
++-}
++-
++-// backup creates a backup of the current executable file.
++-func (u *CoreUpdater) backup(currentExePath, backupExePath, backupDir string) (err error) {
++-	log.Infoln("updater: backing up current ExecFile:%s to %s", currentExePath, backupExePath)
++-	_ = os.Mkdir(backupDir, 0o755)
++-
++-	// On Windows, since the running executable cannot be overwritten or deleted, it uses os.Rename to move the file to the backup path.
++-	// On other platforms, it copies the file to the backup path, preserving the original file and its permissions.
++-	// The backup directory is created if it does not exist.
++-	if runtime.GOOS == "windows" {
++-		err = os.Rename(currentExePath, backupExePath)
++-	} else {
++-		err = u.copyFile(currentExePath, backupExePath)
++-	}
++-	if err != nil {
++-		return err
++-	}
++-
++-	return nil
++-}
++-
++-// clean removes the temporary directory itself and all it's contents.
++-func (u *CoreUpdater) clean(updateDir string) {
++-	_ = os.RemoveAll(updateDir)
++-}
++-
++-// Unpack a single .gz file to the specified directory
++-// Existing files are overwritten
++-// All files are created inside outDir, subdirectories are not created
++-// Return the output file name
++-func (u *CoreUpdater) gzFileUnpack(gzfile, outDir string, fileMode os.FileMode) (outputName string, err error) {
++-	f, err := os.Open(gzfile)
++-	if err != nil {
++-		return "", fmt.Errorf("os.Open(): %w", err)
++-	}
++-
++-	defer func() {
++-		closeErr := f.Close()
++-		if closeErr != nil && err == nil {
++-			err = closeErr
++-		}
++-	}()
++-
++-	gzReader, err := gzip.NewReader(f)
++-	if err != nil {
++-		return "", fmt.Errorf("gzip.NewReader(): %w", err)
++-	}
++-
++-	defer func() {
++-		closeErr := gzReader.Close()
++-		if closeErr != nil && err == nil {
++-			err = closeErr
++-		}
++-	}()
++-	// Get the original file name from the .gz file header
++-	originalName := gzReader.Header.Name
++-	if originalName == "" {
++-		// Fallback: remove the .gz extension from the input file name if the header doesn't provide the original name
++-		originalName = filepath.Base(gzfile)
++-		originalName = strings.TrimSuffix(originalName, ".gz")
++-	}
++-
++-	outputName = filepath.Join(outDir, originalName)
++-
++-	// Create the output file
++-	wc, err := os.OpenFile(outputName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, fileMode)
++-	if err != nil {
++-		return "", fmt.Errorf("os.OpenFile(%s): %w", outputName, err)
++-	}
++-
++-	defer func() {
++-		closeErr := wc.Close()
++-		if closeErr != nil && err == nil {
++-			err = closeErr
++-		}
++-	}()
++-
++-	// Copy the contents of the gzReader to the output file
++-	_, err = io.Copy(wc, gzReader)
++-	if err != nil {
++-		return "", fmt.Errorf("io.Copy(): %w", err)
++-	}
++-
++-	return outputName, nil
++-}
++-
++-// Unpack a single file from .zip file to the specified directory
++-// Existing files are overwritten
++-// All files are created inside 'outDir', subdirectories are not created
++-// Return the output file name
++-func (u *CoreUpdater) zipFileUnpack(zipfile, outDir string, fileMode os.FileMode) (outputName string, err error) {
++-	zrc, err := zip.OpenReader(zipfile)
++-	if err != nil {
++-		return "", fmt.Errorf("zip.OpenReader(): %w", err)
++-	}
++-
++-	defer func() {
++-		closeErr := zrc.Close()
++-		if closeErr != nil && err == nil {
++-			err = closeErr
++-		}
++-	}()
++-	if len(zrc.File) == 0 {
++-		return "", fmt.Errorf("no files in the zip archive")
++-	}
++-
++-	// Assuming the first file in the zip archive is the target file
++-	zf := zrc.File[0]
++-	var rc io.ReadCloser
++-	rc, err = zf.Open()
++-	if err != nil {
++-		return "", fmt.Errorf("zip file Open(): %w", err)
++-	}
++-
++-	defer func() {
++-		closeErr := rc.Close()
++-		if closeErr != nil && err == nil {
++-			err = closeErr
++-		}
++-	}()
++-	fi := zf.FileInfo()
++-	name := fi.Name()
++-	outputName = filepath.Join(outDir, name)
++-
++-	if fi.IsDir() {
++-		return "", fmt.Errorf("the target file is a directory")
++-	}
++-
++-	var wc io.WriteCloser
++-	wc, err = os.OpenFile(outputName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, fileMode)
++-	if err != nil {
++-		return "", fmt.Errorf("os.OpenFile(): %w", err)
++-	}
++-
++-	defer func() {
++-		closeErr := wc.Close()
++-		if closeErr != nil && err == nil {
++-			err = closeErr
++-		}
++-	}()
++-	_, err = io.Copy(wc, rc)
++-	if err != nil {
++-		return "", fmt.Errorf("io.Copy(): %w", err)
++-	}
++-
++-	return outputName, nil
++-}
++-
++-// Copy file on disk
++-func (u *CoreUpdater) copyFile(src, dst string) (err error) {
++-	rc, err := os.Open(src)
++-	if err != nil {
++-		return fmt.Errorf("os.Open(%s): %w", src, err)
++-	}
++-
++-	defer func() {
++-		closeErr := rc.Close()
++-		if closeErr != nil && err == nil {
++-			err = closeErr
++-		}
++-	}()
++-
++-	info, err := rc.Stat()
++-	if err != nil {
++-		return fmt.Errorf("rc.Stat(): %w", err)
++-	}
++-
++-	// Create the output file
++-	// If the file does not exist, creates it with permissions perm (before umask);
++-	// otherwise truncates it before writing, without changing permissions.
++-	wc, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, info.Mode())
++-	if err != nil {
++-		// On some file system (such as Android's /data) maybe return error: "text file busy"
++-		// Let's delete the target file and recreate it
++-		err = os.Remove(dst)
++-		if err != nil {
++-			return fmt.Errorf("os.Remove(%s): %w", dst, err)
++-		}
++-		wc, err = os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, info.Mode())
++-		if err != nil {
++-			return fmt.Errorf("os.OpenFile(%s): %w", dst, err)
++-		}
++-	}
++-
++-	defer func() {
++-		closeErr := wc.Close()
++-		if closeErr != nil && err == nil {
++-			err = closeErr
++-		}
++-	}()
++-
++-	_, err = io.Copy(wc, rc)
++-	if err != nil {
++-		return fmt.Errorf("io.Copy(): %w", err)
++-	}
++-
++-	if runtime.GOOS == "darwin" {
++-		err = exec.Command("/usr/bin/codesign", "--sign", "-", dst).Run()
++-		if err != nil {
++-			log.Warnln("codesign failed: %v", err)
++-		}
++-	}
++-
++-	log.Infoln("updater: copy: %s to %s", src, dst)
++-	return nil
++-}
++--- a/component/updater/update_ui.go
+++++ b/component/updater/update_ui.go
++@@ -71,22 +71,8 @@
++ 	return updater
++ }
++ 
++-func (u *UIUpdater) AutoDownloadUI() {
++-	u.mutex.Lock()
++-	defer u.mutex.Unlock()
++-	if u.autoDownloadUI {
++-		dirEntries, _ := os.ReadDir(u.externalUIPath)
++-		if len(dirEntries) > 0 {
++-			log.Infoln("UI already exists, skip downloading")
++-		} else {
++-			log.Infoln("External UI downloading ...")
++-			err := u.downloadUI()
++-			if err != nil {
++-				log.Errorln("Error downloading UI: %s", err)
++-			}
++-		}
++-	}
++-}
+++// AutoDownloadUI intentionally performs no I/O. Manual DownloadUI remains available.
+++func (u *UIUpdater) AutoDownloadUI() {}
++ 
++ func (u *UIUpdater) DownloadUI() error {
++ 	u.mutex.Lock()
++--- /dev/null
+++++ b/component/updater/privacy_test.go
++@@ -0,0 +1,69 @@
+++package updater
+++
+++import (
+++	"archive/zip"
+++	"bytes"
+++	"net/http"
+++	"net/http/httptest"
+++	"os"
+++	"path/filepath"
+++	"strings"
+++	"sync/atomic"
+++	"testing"
+++)
+++
+++func TestPrivacyCoreUpdateCannotReplaceBinary(t *testing.T) {
+++	binary := filepath.Join(t.TempDir(), "mihomo")
+++	original := []byte("audited firmware binary")
+++	if err := os.WriteFile(binary, original, 0o755); err != nil {
+++		t.Fatal(err)
+++	}
+++	for _, channel := range []string{"release", "alpha", ""} {
+++		for _, force := range []bool{false, true} {
+++			err := DefaultCoreUpdater.Update(binary, channel, force)
+++			if err == nil || !strings.Contains(err.Error(), "self-update is disabled") {
+++				t.Fatalf("update: %v", err)
+++			}
+++			current, err := os.ReadFile(binary)
+++			if err != nil || !bytes.Equal(current, original) {
+++				t.Fatalf("binary changed: %v", err)
+++			}
+++		}
+++	}
+++}
+++
+++func TestPrivacyDashboardRequiresExplicitDownload(t *testing.T) {
+++	var archive bytes.Buffer
+++	writer := zip.NewWriter(&archive)
+++	file, err := writer.Create("index.html")
+++	if err != nil {
+++		t.Fatal(err)
+++	}
+++	if _, err := file.Write([]byte("local dashboard fixture")); err != nil {
+++		t.Fatal(err)
+++	}
+++	if err := writer.Close(); err != nil {
+++		t.Fatal(err)
+++	}
+++	var requests atomic.Int32
+++	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+++		requests.Add(1)
+++		_, _ = w.Write(archive.Bytes())
+++	}))
+++	defer server.Close()
+++	directory := t.TempDir()
+++	updater := &UIUpdater{externalUIURL: server.URL, externalUIPath: directory, autoDownloadUI: true}
+++	updater.AutoDownloadUI()
+++	if requests.Load() != 0 {
+++		t.Fatal("automatic dashboard download made a request")
+++	}
+++	if err := updater.DownloadUI(); err != nil {
+++		t.Fatal(err)
+++	}
+++	if requests.Load() != 1 {
+++		t.Fatalf("manual downloads: %d", requests.Load())
+++	}
+++	if data, err := os.ReadFile(filepath.Join(directory, "index.html")); err != nil || string(data) != "local dashboard fixture" {
+++		t.Fatalf("dashboard: %q, %v", data, err)
+++	}
+++}
++--- /dev/null
+++++ b/adapter/outbound/privacy_tailscale_test.go
++@@ -0,0 +1,18 @@
+++//go:build with_gvisor && !no_tailscale
+++
+++package outbound
+++
+++import (
+++	"github.com/metacubex/tailscale/envknob"
+++	"github.com/metacubex/tailscale/feature/buildfeatures"
+++	"testing"
+++)
+++
+++func TestPrivacyTailscaleTelemetryDisabled(t *testing.T) {
+++	if buildfeatures.HasLogTail || buildfeatures.HasClientMetrics || buildfeatures.HasNetLog || buildfeatures.HasTUNDevStats || buildfeatures.HasClientUpdate {
+++		t.Fatal("Tailscale logging, remote metrics, tunnel statistics or client updates were compiled in")
+++	}
+++	if !envknob.NoLogsNoSupport() {
+++		t.Fatal("Tailscale remote logging guard is not enabled")
+++	}
+++}

@@ -1,0 +1,84 @@
+{
+  "version": 1,
+  "patches": [
+    {
+      "name": "0001-argon-local-backgrounds",
+      "scope": "luci",
+      "patch": "0001-argon-local-backgrounds.patch",
+      "files": [
+        {
+          "path": "themes/luci-theme-argon/Makefile",
+          "before": "1d8987a6526cc866f44a3a959c297954c1bd4dfb831646d9f3b2b4928f9ed109",
+          "after": "9a784d163ff47aaff4e0920d0a2fe72d6f6c8b1367224f5e8f96814777ed1168"
+        },
+        {
+          "path": "themes/luci-theme-argon/ucode/template/themes/argon/sysauth.ut",
+          "before": "aea72c1efc5c32022e1af48baa74ffc916efe45a477b297b7cbc5716d7591cc1",
+          "after": "86b0c059547c0d8c7bf8f88a162fae7d6bc252ae8b3e999c06476f0708ef5ea2"
+        },
+        {
+          "path": "themes/luci-theme-argon/root/usr/libexec/rpcd/luci.argon_wallpaper",
+          "before": "63e0fcbd69c9cdd07a6e9417a25d5025285f05a1449121ffd896f0f67eb4a97d",
+          "after": "9151a6fe035c8935ac54217cddc9e8201f391d4795acbb3f3c390d37405ec2c0"
+        }
+      ]
+    },
+    {
+      "name": "0002-mihomo-privacy-build",
+      "scope": "nikki",
+      "patch": "0002-mihomo-privacy-build.patch",
+      "files": [
+        {
+          "path": "mihomo-meta/Makefile",
+          "before": "885d4018da9683a21d38275c22272e522cb2110e677d6df856a42ea6dd214eec",
+          "after": "dc981ce5bc319fa8700583a6c5c03f0b07415050af99ccf01a3bac031a904bd9"
+        },
+        {
+          "path": "nikki/files/nikki.conf",
+          "before": "7d67418d19142423553c01f782fe2fdf1a88c1ce79a6cf6f97587c5a8ee659a9",
+          "after": "dc784df1ca32aad1592a5a38ad25dd91ff1d24a494670c88f558d5d6d7d88e13"
+        },
+        {
+          "path": "luci-app-nikki/htdocs/luci-static/resources/view/nikki/mixin.js",
+          "before": "a2b6b094f802062091c0b7d33068dc7469b258c81b7f01615c34c1ee0d1717b4",
+          "after": "424414b42161111269f0cf8209ff107dc72f151f52842120824ff772308b4ac6"
+        },
+        {
+          "path": "nikki/files/ucode/mixin.uc",
+          "before": "2656a8714e9e52ab324bf49245bc305075fe0a78e8e7b5872e203d42f43a41eb",
+          "after": "c7af99c89b0d9f06f6ecb2e2d40ca4fd1ad46cc2212ec4fb16a5c064192cb787"
+        },
+        {
+          "path": "mihomo-meta/patches/9000-firmware-privacy.patch",
+          "before": null,
+          "after": "14fedd714f6d914cce7e0a802eaa865fe2e275efa14cc9a4d21a77ab89c0a3b5"
+        }
+      ]
+    }
+  ],
+  "mihomo": {
+    "version": "v1.19.31",
+    "files": [
+      {
+        "path": "component/updater/update_core.go",
+        "before": "8018b25942e8619c2bb6dccf901ff45e8e52a445f8d9ce73b710560bc69644bd",
+        "after": "0b53c24d94a57ebd29d8160a46e7166242586c9e40309514fd757274831095f9"
+      },
+      {
+        "path": "component/updater/update_ui.go",
+        "before": "8ba5c039fd368c79ccb5bfef726f384f5d85600344f768dc844226b9b49aa902",
+        "after": "87a2e6d28445f9ab6186afe4dabac689cfb44c82069f508e5350082440b5feea"
+      },
+      {
+        "path": "component/updater/privacy_test.go",
+        "before": null,
+        "after": "6e6efe6c2b0a79a11e1978e0af11ba9f5c2604614d529b306a5bbdfa2f35fc6f"
+      },
+      {
+        "path": "adapter/outbound/privacy_tailscale_test.go",
+        "before": null,
+        "after": "626a68d5bdc48bee8a075e863cee53a03ffca0c39a85a367ba9f281e1e9f5cc7"
+      }
+    ]
+  }
+}
