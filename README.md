@@ -11,6 +11,7 @@
 - 保留设备默认软件包，额外启用 LuCI、HTTPS 及基础界面/防火墙中文语言包。
 - 内置官方 feed 的 `luci-theme-argon`，首次启动设置 Argon 为默认主题。
 - 默认内置 [Nikki](https://github.com/nikkinikki-org/OpenWrt-nikki)、LuCI 管理界面、中文语言包及 Mihomo Meta 稳定内核。
+- 默认使用 OpenSSH 服务端及客户端，内置 SFTP 服务端，不编译 Dropbear。
 - 默认 LAN 地址：`192.168.11.1/24`，DHCP 地址池：`192.168.11.100–192.168.11.249`。
 
 对应源码：[设备定义](https://github.com/immortalwrt/immortalwrt/blob/openwrt-25.12/target/linux/mediatek/image/filogic.mk)、[设备树](https://github.com/immortalwrt/immortalwrt/blob/openwrt-25.12/target/linux/mediatek/dts/mt7986a-netcore-n60-pro.dts)。
@@ -65,6 +66,14 @@ Nikki 按[官方编译方法](https://github.com/nikkinikki-org/OpenWrt-nikki#co
 
 安装后需在 LuCI 的 Nikki 页面配置自己的订阅或配置文件，再启用服务；保留上游默认关闭状态，不预置订阅。Nikki 更新来源为 `main` 分支，默认构建仍使用锁定提交；实际提交记录在 `build-info.txt`。
 
+## 默认 SSH
+
+全新安装默认使用 OpenSSH，监听 TCP 22，系统通过上游 `/etc/init.d/sshd` 启动服务；首次启动时由设备生成独立的 RSA 和 Ed25519 主机密钥。固件内置 `openssh-server`、`openssh-client`、`openssh-keygen` 和 `openssh-sftp-server`，取消 `dropbear`；`ssh` 和 `scp` 默认使用 OpenSSH 客户端。
+
+先在 LuCI 设置 root 密码，再通过 `ssh root@192.168.11.1` 登录。默认允许 root 公钥和密码认证，拒绝空密码；不预置密码、授权公钥或主机私钥。SFTP 服务端兼容现代 `scp` 和 SFTP 客户端。
+
+配置文件为 `files/etc/ssh/sshd_config`，可在设备的 `/etc/ssh/sshd_config.d/*.conf` 添加覆盖设置。公钥读取 `/root/.ssh/authorized_keys`，也兼容保留配置升级时已有的 `/etc/dropbear/authorized_keys`。保留配置升级时，已有的 `/etc/ssh/sshd_config` 可能继续保留，端口和认证方式以设备实际配置为准。
+
 ## 产物与刷机
 
 - `*netcore_n60-pro*squashfs-sysupgrade.itb`：适用于已经安装兼容 OpenWrt/ImmortalWrt、且引导和分区布局一致的设备升级。
@@ -78,7 +87,7 @@ Nikki 按[官方编译方法](https://github.com/nikkinikki-org/OpenWrt-nikki#co
 
 ## 修改软件包
 
-编辑 `configs/netcore-n60-pro.config`，添加需要的 `CONFIG_PACKAGE_<包名>=y`。工作流在更新 feeds 后运行 `make defconfig`，并检查设备、中文 LuCI 和 Nikki 配置没有被静默移除。完整解析后的配置会随固件上传。自定义固件文件放在 `files/`，会复制到固件根目录；LAN 默认配置位于 `files/etc/uci-defaults/99-custom-lan`。
+编辑 `configs/netcore-n60-pro.config`，添加需要的 `CONFIG_PACKAGE_<包名>=y`。工作流在更新 feeds 后运行 `make defconfig`，并检查设备、中文 LuCI、Nikki 和默认 OpenSSH 配置没有被静默移除。完整解析后的配置会随固件上传。自定义固件文件放在 `files/`，会复制到固件根目录；LAN 默认配置位于 `files/etc/uci-defaults/99-custom-lan`。
 
 ## 更新锁定版本
 

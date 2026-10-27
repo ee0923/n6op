@@ -29,10 +29,16 @@ required = {
     "CONFIG_PACKAGE_luci-app-nikki=y",
     "CONFIG_PACKAGE_luci-i18n-nikki-zh-cn=y",
     "CONFIG_PACKAGE_mihomo-meta=y",
+    "CONFIG_PACKAGE_openssh-server=y",
+    "CONFIG_PACKAGE_openssh-client=y",
+    "CONFIG_PACKAGE_openssh-keygen=y",
+    "CONFIG_PACKAGE_openssh-sftp-server=y",
+    "# CONFIG_PACKAGE_dropbear is not set",
 }
 missing = sorted(required - set(config))
 devices = [line for line in config if re.match(r"CONFIG_TARGET_.*_DEVICE_.*=y$", line)]
-if missing or devices != ["CONFIG_TARGET_mediatek_filogic_DEVICE_netcore_n60-pro=y"]:
-    sys.exit(f"Invalid build config: missing={missing}, selected_devices={devices}")
-print("Verified Netcore N60 Pro: mediatek/filogic, netcore_n60-pro, Chinese LuCI with HTTPS and Argon, Nikki and Mihomo Meta.")
+dropbear_enabled = any(re.match(r"CONFIG_PACKAGE_dropbear=[ym]$", line) for line in config)
+if missing or dropbear_enabled or devices != ["CONFIG_TARGET_mediatek_filogic_DEVICE_netcore_n60-pro=y"]:
+    sys.exit(f"Invalid build config: missing={missing}, selected_devices={devices}, dropbear_enabled={dropbear_enabled}")
+print("Verified Netcore N60 Pro: mediatek/filogic, netcore_n60-pro, Chinese LuCI with HTTPS and Argon, Nikki, Mihomo Meta and default OpenSSH.")
 PY
