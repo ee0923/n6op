@@ -28,7 +28,7 @@
 
 3. 首次推送会触发编译。后续可在 **Actions → Build ImmortalWrt for Netcore N60 Pro → Run workflow** 手动启动。
 4. 默认保持 `update_sources=false`，使用仓库提交的锁定版本。需要更新时设置 `update_sources=true`，并在 `upstream_ref` 填写支持该设备的分支、tag 或完整 commit SHA。只有更新模式会使用此字段；缺少官方设备适配时检查步骤会失败。
-5. 编译成功后会自动发布到仓库 **Releases**，可直接下载固件、配置、校验文件和完整产物压缩包。也可以在该次运行的 **Artifacts** 下载 `immortalwrt-netcore-n60-pro-*`；失败时下载 `n60-pro-build-logs-*` 排查。Artifacts 保留 14 天。
+5. 编译成功后会自动发布到仓库 **Releases**，可直接下载固件、配置、校验文件和完整产物压缩包。也可以在该次运行的 **Artifacts** 下载 `immortalwrt-netcore-n60-pro-*`；失败时下载 `n60-pro-build-logs-*` 排查。日志附件始终收集当次源码锁定文件、输入配置、已生成的配置及 feeds 清单，并记录可读取的源码/feeds 实际提交；未完成的 checkout 标记为 unavailable。Artifacts 保留 14 天。
 
 修改编译配置、脚本、固件文件或工作流后推送到 `main` 也会触发编译。没有定时任务。
 

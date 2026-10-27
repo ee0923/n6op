@@ -105,17 +105,7 @@ jobs:
           cp .config ../artifacts/build.config
           cp ../configs/source-lock.json ../artifacts/source-lock.json
           ./scripts/diffconfig.sh > ../artifacts/diffconfig
-          {
-            printf 'Upstream: https://github.com/immortalwrt/immortalwrt\n'
-            printf 'Source commit: %s\n' "$(git rev-parse HEAD)"
-            printf 'Config commit: %s\n' "$GITHUB_SHA"
-            printf 'Run: %s/%s/actions/runs/%s\n' "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID"
-            for feed in feeds/*; do
-              if [ -d "$feed/.git" ]; then
-                printf 'Feed %s: %s\n' "$(basename "$feed")" "$(git -C "$feed" rev-parse HEAD)"
-              fi
-            done
-          } > ../artifacts/build-info.txt
+          python3 ../scripts/collect-build-info.py --source-dir . --output ../artifacts/build-info.txt
 
       - name: Cache downloaded sources
         uses: actions/cache@v4
@@ -173,6 +163,11 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+      - name: Collect source diagnostics
+        if: always()
+        run: |
+          python3 scripts/collect-build-info.py --source-dir source --output logs/build-info.txt
+
       - name: Upload build logs and resolved configuration
         if: always()
         uses: actions/upload-artifact@v4
@@ -182,6 +177,9 @@ jobs:
           path: |
             logs/
             source/.config
+            source/feeds.conf
+            configs/source-lock.json
+            configs/netcore-n60-pro.config
             artifacts/build-info.txt
           if-no-files-found: warn
           include-hidden-files: true
