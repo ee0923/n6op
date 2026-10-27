@@ -1,4 +1,4 @@
-# Automatic failover: append DOMAIN/DOMAIN-SUFFIX rules targeting MOBILE.
+# Subscription-ready policy switch: append domain rules targeting MOBILE.
 # No domains are selected and no subscription or remote rule list is required.
 mode: rule
 log-level: info
@@ -8,10 +8,19 @@ proxies:
     type: direct
     routing-mark: 106
     ip-version: ipv4
-# Ordered fallback checks both exits even while idle, so recovery is automatic.
+# Select the policy in the Mihomo dashboard without replacing the profile.
+profile:
+  store-selected: true
 proxy-groups:
   - name: MOBILE
+    type: select
+    proxies:
+      - MOBILE-AUTO
+      - MOBILE-USB
+  # Ordered fallback checks both exits even while idle for automatic recovery.
+  - name: MOBILE-AUTO
     type: fallback
+    hidden: true
     proxies:
       - MOBILE-USB
       - DIRECT
