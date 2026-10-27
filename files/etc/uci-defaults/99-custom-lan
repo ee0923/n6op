@@ -1,17 +1,40 @@
 #!/bin/sh
 
-# Apply the default subnet without replacing an existing custom LAN address.
-case "$(uci -q get network.lan.ipaddr)" in
-	192.168.1.1|192.168.1.1/24) ;;
-	*) exit 0 ;;
+# Persist progress before changing UCI so a partial first boot can be retried.
+pending_file=/etc/uci-defaults/.99-custom-lan.pending
+current_ip=$(uci -q get network.lan.ipaddr) || {
+	[ -f "$pending_file" ] || exit 1
+	# A missing option after an interrupted delete is recoverable. A read
+	# failure while an address still exists must not overwrite a custom LAN.
+	lan_section=$(uci -q show network.lan) || exit 1
+	case "$lan_section" in *'network.lan.ipaddr='*) exit 1 ;; esac
+	current_ip=''
+}
+
+case "$current_ip" in
+	192.168.1.1|192.168.1.1/24)
+		: > "$pending_file" || exit 1
+		;;
+	''|192.168.6.1|192.168.6.1/24)
+		# An existing custom address without pending work must be preserved.
+		[ -f "$pending_file" ] || exit 0
+		;;
+	*)
+		# Preserve a custom address chosen after an interrupted initialization.
+		rm -f "$pending_file" || exit 1
+		exit 0
+		;;
 esac
 
-uci delete network.lan.ipaddr || exit 1
+uci -q delete network.lan.ipaddr || {
+	[ -z "$current_ip" ] || exit 1
+}
 uci add_list network.lan.ipaddr='192.168.6.1/24' || exit 1
 uci -q delete network.lan.netmask || true
 uci set dhcp.lan.start='100' || exit 1
 uci set dhcp.lan.limit='150' || exit 1
 uci commit network || exit 1
 uci commit dhcp || exit 1
+rm -f "$pending_file" || exit 1
 
 exit 0
