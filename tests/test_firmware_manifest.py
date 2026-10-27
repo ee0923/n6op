@@ -10,6 +10,10 @@ spec.loader.exec_module(firmware)
 
 # Independent fixture so deleting a production requirement cannot weaken this test.
 PACKAGES = '''base-files
+kmod-usb-net-rndis
+kmod-usb-net-cdc-ether
+kmod-usb-net-cdc-ncm
+ip-full
 openssh-server
 openssh-client
 openssh-keygen

@@ -15,6 +15,11 @@ if not match or not re.search(r"DEVICE_MODEL\s*:=\s*N60 Pro\s*$", match[1], re.M
 config = (root / ".config").read_text().splitlines()
 required = {
     "CONFIG_CCACHE=y",
+    "CONFIG_PACKAGE_kmod-usb-net-rndis=y",
+    "CONFIG_PACKAGE_kmod-usb-net-cdc-ether=y",
+    "CONFIG_PACKAGE_kmod-usb-net-cdc-ncm=y",
+    "CONFIG_PACKAGE_ip-full=y",
+
     "CONFIG_TARGET_mediatek=y",
     "CONFIG_TARGET_mediatek_filogic=y",
     "CONFIG_TARGET_mediatek_filogic_DEVICE_netcore_n60-pro=y",

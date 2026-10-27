@@ -42,6 +42,13 @@ class DeviceConfigTests(unittest.TestCase):
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn(f'CONFIG_PACKAGE_{package}=y', result.stderr)
 
+    def test_missing_tethering_packages_rejected(self):
+        for package in ['kmod-usb-net-rndis', 'kmod-usb-net-cdc-ether', 'kmod-usb-net-cdc-ncm', 'ip-full']:
+            with self.subTest(package=package):
+                result = self.check_config(lambda config: config.replace(f'CONFIG_PACKAGE_{package}=y\n', ''))
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(f'CONFIG_PACKAGE_{package}=y', result.stderr)
+
     def test_dropbear_reenabled_by_dependencies_rejected(self):
         for selection in ['y', 'm']:
             with self.subTest(selection=selection):
